@@ -1,0 +1,5 @@
+[workspace]
+
+resolver = "3"
+
+members = ["mortdb", "mortdb-server", "mortdb-testkit"]
