@@ -1,4 +1,4 @@
-#MortDB
+# MortDB
 
 [![CI](https://github.com/prakharchoudhary/mortdb/actions/workflows/ci.yml/badge.svg)](https://github.com/prakharchoudhary/mortdb/actions/workflows/ci.yml)
 
