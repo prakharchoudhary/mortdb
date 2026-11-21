@@ -21,6 +21,12 @@ pub enum Error {
     /// The passed arguments(s) or request are valid but not
     /// supported by the current build or version.
     NotSupported(String),
+
+    /// The config field is being set with an invalid value.
+    InvalidConfig {
+        field: Option<&'static str>,
+        message: String,
+    },
 }
 
 impl From<std::io::Error> for Error {
@@ -46,6 +52,18 @@ impl std::fmt::Display for Error {
             ),
             Error::InvalidArgument(msg) => write!(f, "Invalid argument: {msg}"),
             Error::NotSupported(msg) => write!(f, "Not supported: {msg}"),
+            Error::InvalidConfig {
+                field: Some(field),
+                message,
+            } => {
+                write!(f, "Invalid config field {field}: {message}")
+            }
+            Error::InvalidConfig {
+                field: None,
+                message,
+            } => {
+                write!(f, "Invalid config: {message}")
+            }
         }
     }
 }
