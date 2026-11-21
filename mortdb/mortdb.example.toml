@@ -1,0 +1,125 @@
+# MortDB example configuration.
+#
+# Every setting is optional. A setting left out of the file keeps its default,
+# and the values shown here are the defaults. Unknown keys are rejected.
+#
+# Sizes are in bytes. TOML allows underscores in numbers for readability.
+
+
+# ---------------------------------------------------------------------------
+# Storage location
+# ---------------------------------------------------------------------------
+
+# Directory where MortDB keeps all of its files (WAL, SSTables, metadata).
+data_dir = "./mortdb-data"
+
+# Create the database in data_dir if none exists there.
+# When false, opening a missing database is an error.
+create_if_missing = true
+
+# Refuse to open if a database already exists in data_dir.
+# Cannot be true while create_if_missing is false.
+error_if_exists = false
+
+
+# ---------------------------------------------------------------------------
+# Limits
+# ---------------------------------------------------------------------------
+
+# Largest key a write may carry. Longer keys are rejected. Must be > 0.
+max_key_size_bytes = 1_024                # 1 KiB
+
+# Largest value a write may carry. Longer values are rejected. Must be > 0.
+max_value_size_bytes = 1_048_576          # 1 MiB
+
+
+# ---------------------------------------------------------------------------
+# Write path
+# ---------------------------------------------------------------------------
+
+# Size the memtable may reach before it is flushed to an SSTable.
+# Each flush produces one SSTable, so this also sets the size of new tables.
+# Smaller: many small tables, more tables for reads to check, more frequent
+#          compaction.
+# Larger:  more memory in use, more WAL to replay after a crash.
+# Must be at least max_key_size_bytes + max_value_size_bytes.
+memtable_size_bytes = 4_194_304           # 4 MiB
+
+# When the WAL is forced to disk.
+#   "always" - sync before acknowledging each write. An acknowledged write
+#              survives power loss. Slowest.
+#   "never"  - let the operating system flush when it chooses. An acknowledged
+#              write survives a MortDB crash, but recent writes can be lost on
+#              power failure or a kernel crash.
+wal_sync_mode = "always"
+
+
+# ---------------------------------------------------------------------------
+# SSTable format
+# ---------------------------------------------------------------------------
+
+# Target size of one data block inside an SSTable. A block is the unit read
+# from disk and checksummed. Smaller blocks make point lookups read less data
+# but enlarge the block index. Must be > 0.
+sstable_block_size_bytes = 4_096          # 4 KiB
+
+# Bits of bloom filter stored per key in each SSTable. More bits lower the
+# chance of reading a table that does not contain the key, at the cost of
+# memory and disk. 10 gives roughly a 1% false-positive rate.
+# 0 disables bloom filters. Must be <= 32.
+sstable_bloom_bits_per_key = 10
+
+
+# ---------------------------------------------------------------------------
+# Read path
+# ---------------------------------------------------------------------------
+
+# Verify the checksum of every block read from disk. Detects on-disk
+# corruption at a small CPU cost per read.
+read_verify_checksums = true
+
+
+# ---------------------------------------------------------------------------
+# Compaction (size-tiered)
+# ---------------------------------------------------------------------------
+
+# Number of similar-sized SSTables that must accumulate before they are merged
+# into one.
+# Lower:  compacts sooner, fewer tables for reads to check, more rewriting.
+# Higher: compacts less often, more tables for reads to check.
+# Must be >= 2.
+compaction_min_tables_per_tier = 4
+
+# How far an SSTable's size may be from its tier's average and still count as
+# "similar-sized". Larger values group more loosely. Must be > 1.0.
+compaction_size_ratio = 1.5
+
+
+# ---------------------------------------------------------------------------
+# Server
+#
+# Used only by mortdb-server. The engine library ignores these.
+# ---------------------------------------------------------------------------
+
+# Address the server binds to. The default accepts local connections only.
+server_listen_addr = "127.0.0.1"
+
+# TCP port the server listens on.
+server_port = 6767
+
+# Maximum number of client connections accepted at once. Must be >= 1.
+server_max_connections = 1024
+
+# How the server secures client connections.
+#   "tls"      - connections use TLS and clients must present the shared
+#                secret. Requires the three settings below.
+#   "insecure" - plain TCP, no encryption, no authentication. Anyone who can
+#                reach the port can read and write all data. For local
+#                development and testing only.
+server_security_mode = "tls"
+
+# Required when server_security_mode is "tls"; ignored otherwise.
+# These have no defaults, so they are commented out here.
+# server_tls_cert_path = "/etc/mortdb/tls/cert.pem"
+# server_tls_key_path = "/etc/mortdb/tls/key.pem"
+# server_auth_secret = "change-me"
