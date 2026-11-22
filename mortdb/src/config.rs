@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use crate::{Error, Result};
 
@@ -124,6 +125,13 @@ pub struct Config {
     ///
     /// Default: 1.5. Must be greater than 1.0.
     pub compaction_size_ratio: f32,
+
+    /// Least severe level that is written to the log. See [`LogLevel`]
+    ///
+    /// The server lets the `MORTDB_LOG_LEVEL` environment variable override this.
+    ///
+    /// Default: [`LogLevel::Info`]
+    pub log_level: LogLevel,
 }
 
 /// When the write-ahead log is forced to disk.
@@ -158,6 +166,41 @@ pub enum ServerSecurityMode {
     Insecure,
 }
 
+/// Least severe level that is written to the log.
+///
+/// Ordered from most to least verbose. Each level also includes
+/// every level listed after it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LogLevel {
+    Trace,
+    Debug,
+    #[default]
+    Info,
+    Warn,
+    Error,
+    Off,
+}
+
+impl FromStr for LogLevel {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "trace" => Ok(LogLevel::Trace),
+            "debug" => Ok(LogLevel::Debug),
+            "info" => Ok(LogLevel::Info),
+            "warn" => Ok(LogLevel::Warn),
+            "error" => Ok(LogLevel::Error),
+            "off" => Ok(LogLevel::Off),
+            _ => Err(invalid(
+                "log_level",
+                "must be one of: trace, debug, info, warn, error, off",
+            )),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -180,6 +223,7 @@ impl Default for Config {
             server_auth_secret: None,
             compaction_min_tables_per_tier: 4,
             compaction_size_ratio: 1.5,
+            log_level: LogLevel::Info,
         }
     }
 }
@@ -297,7 +341,7 @@ impl Config {
                     || self.server_tls_key_path.is_some()
                     || self.server_auth_secret.is_some()
                 {
-                    log::warn!(
+                    tracing::warn!(
                         "server_security_mode is \"insecure\": TLS and auth settings are ignored"
                     );
                 }
@@ -834,5 +878,25 @@ mod tests {
             result,
             Err(Error::Io(ref e)) if e.kind() == std::io::ErrorKind::NotFound
         ));
+    }
+
+    #[test]
+    fn default_log_level_is_info() {
+        assert_eq!(Config::default().log_level, LogLevel::Info);
+    }
+
+    #[test]
+    fn load_rejects_unknown_log_level() {
+        let path = write_config_file("log_level_bad", "log_level = \"loud\"\n");
+        assert!(matches!(
+            Config::load(&path),
+            Err(Error::InvalidConfig { .. })
+        ));
+    }
+
+    #[test]
+    fn log_level_from_str_ignores_case_and_whitespace() {
+        assert_eq!(" WARN ".parse::<LogLevel>().unwrap(), LogLevel::Warn);
+        assert_eq!("off".parse::<LogLevel>().unwrap(), LogLevel::Off);
     }
 }

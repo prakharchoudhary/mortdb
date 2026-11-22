@@ -34,6 +34,16 @@ max_value_size_bytes = 1_048_576          # 1 MiB
 
 
 # ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+# Least severe level that is written to the log.
+# One of: "trace", "debug", "info", "warn", "error", "off".
+# The server lets the MORTDB_LOG_LEVEL environment variable override this.
+log_level = "info"
+
+
+# ---------------------------------------------------------------------------
 # Write path
 # ---------------------------------------------------------------------------
 
