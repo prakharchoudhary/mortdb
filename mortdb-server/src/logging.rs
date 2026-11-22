@@ -1,5 +1,4 @@
 /// Logging setup for the server process.
-
 use std::io::IsTerminal;
 
 use crate::BoxError;
